@@ -1,0 +1,3 @@
+[build]
+# Full parallelism with opt-level 3 dependencies can exhaust RAM on a 16 GB Mac.
+jobs = 4

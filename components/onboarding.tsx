@@ -1,11 +1,11 @@
-'use client'
-
 import { useState } from 'react'
-import { ArrowLeft, ArrowRight, Check, Keyboard, Mic, MonitorUp } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Mic } from 'lucide-react'
 import { LANGUAGES, langInfo, type LangCode } from '@/lib/content'
 import { useStore } from '@/lib/store'
+import { isTauri, type Permissions } from '@/lib/tauri'
 import { cn } from '@/lib/utils'
-import { Kbd, LumenAppIcon, withGlyphs } from './brand'
+import { PermissionsList } from './app/settings-view'
+import { Kbd, TeachyaAppIcon, withGlyphs } from './brand'
 import { VoiceWaveform } from './voice-waveform'
 
 const STEPS = ['Welcome', 'Comfort', 'Voice', 'Learning', 'Permissions'] as const
@@ -17,10 +17,11 @@ export function Onboarding() {
   const [extraSpeak, setExtraSpeak] = useState<LangCode[]>(['en'])
   const [learning, setLearning] = useState<LangCode>('ko')
   const [micTest, setMicTest] = useState(false)
-  const [granted, setGranted] = useState<Record<string, boolean>>({})
+  const [perms, setPerms] = useState<Permissions | null>(null)
 
   const speakLangs = Array.from(new Set<LangCode>([comfort, ...extraSpeak]))
-  const allGranted = ['screen', 'mic', 'access'].every((k) => granted[k])
+  // Screen Recording is required; the microphone is optional. Outside the app (browser preview) let people through.
+  const canFinish = !isTauri || perms?.screen === true
 
   const pickComfort = (code: LangCode) => {
     setComfort(code)
@@ -30,32 +31,28 @@ export function Onboarding() {
   const finish = () => completeOnboarding({ comfortLang: comfort, speakLangs, learningLang: learning })
 
   return (
-    <div className="relative flex h-dvh w-full items-center justify-center overflow-hidden p-4">
-      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(/images/wallpaper.png)' }} />
-      <div className="absolute inset-0 bg-black/20 backdrop-blur-2xl" />
+    <div className="relative flex h-dvh w-full items-center justify-center overflow-hidden p-4 pt-10">
+      <div data-tauri-drag-region className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(/images/wallpaper.png)' }} />
+      <div data-tauri-drag-region className="absolute inset-0 bg-black/20 backdrop-blur-2xl" />
 
       <section
         aria-labelledby="onboarding-title"
         className="relative flex w-full max-w-[640px] flex-col overflow-hidden rounded-2xl border border-white/40 bg-white/85 shadow-[0_40px_120px_-20px_rgb(0_0_0/0.5)] backdrop-blur-xl"
       >
-        <header className="flex h-11 items-center gap-2 border-b border-black/5 px-4">
-          <span className="size-3 rounded-full bg-[#ff5f57]" />
-          <span className="size-3 rounded-full bg-[#febc2e]" />
-          <span className="size-3 rounded-full bg-[#28c840]" />
-          <span className="flex-1 text-center text-[13px] font-medium text-muted-foreground">Lumen Setup</span>
-          <span className="w-[52px]" />
+        <header data-tauri-drag-region className="flex h-11 items-center justify-center border-b border-black/5 px-4">
+          <span className="text-[13px] font-medium text-muted-foreground">Teachya Setup</span>
         </header>
 
         <div className="min-h-[440px] px-10 pb-6 pt-8">
           {step === 0 && (
             <div className="flex flex-col items-center pt-6 text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
-              <LumenAppIcon className="size-20" />
+              <TeachyaAppIcon className="size-20" />
               <h1 id="onboarding-title" className="mt-6 text-3xl font-semibold tracking-tight text-balance">
                 Your screen is your curriculum.
               </h1>
               <p className="mt-3 max-w-md leading-relaxed text-muted-foreground text-pretty">
-                Lumen lives in your menu bar. Select anything you don&apos;t understand — a subtitle, a post, a meme — and
-                ask about it out loud. Gemma 4 explains the meaning, nuance, and culture in your language.
+                Teachya runs quietly in the background. Select anything you don&apos;t understand — a subtitle, a post, a meme — and
+                ask about it out loud. Teachya explains the meaning, nuance, and culture in your language.
               </p>
               <ol className="mt-8 grid w-full grid-cols-3 gap-3 text-left">
                 {[
@@ -76,7 +73,7 @@ export function Onboarding() {
           {step === 1 && (
             <StepShell
               title="Which language are you most comfortable in?"
-              subtitle="Gemma will explain everything in this language — definitions, nuance, and follow-ups."
+              subtitle="Teachya will explain everything in this language — definitions, nuance, and follow-ups."
             >
               <div className="grid grid-cols-3 gap-3">
                 {LANGUAGES.map((l) => (
@@ -89,7 +86,7 @@ export function Onboarding() {
           {step === 2 && (
             <StepShell
               title="How will you ask questions?"
-              subtitle={`Gemma will listen for ${speakLangs.map((c) => langInfo(c).native).join(' or ')}. Mix them freely — even mid-sentence.`}
+              subtitle={`Teachya will listen for ${speakLangs.map((c) => langInfo(c).native).join(' or ')}. Mix them freely — even mid-sentence.`}
             >
               <div className="grid grid-cols-3 gap-3">
                 {LANGUAGES.map((l) => {
@@ -126,7 +123,7 @@ export function Onboarding() {
                   {micTest ? (
                     <VoiceWaveform mode="listening" height={40} />
                   ) : (
-                    <p className="flex h-full items-center text-[13px] text-white/50">Say something to see Lumen hear you.</p>
+                    <p className="flex h-full items-center text-[13px] text-white/50">Say something to see Teachya hear you.</p>
                   )}
                 </div>
               </div>
@@ -134,7 +131,7 @@ export function Onboarding() {
           )}
 
           {step === 3 && (
-            <StepShell title="What are you learning?" subtitle="Lumen tunes slang detection, romanization, and quizzes to this language.">
+            <StepShell title="What are you learning?" subtitle="Teachya tunes slang detection, romanization, and quizzes to this language.">
               <div className="grid grid-cols-3 gap-3">
                 {LANGUAGES.filter((l) => l.code !== comfort).map((l) => (
                   <LangTile key={l.code} active={learning === l.code} onClick={() => setLearning(l.code)} native={l.native} english={l.english} />
@@ -144,40 +141,13 @@ export function Onboarding() {
           )}
 
           {step === 4 && (
-            <StepShell title="Let Lumen see and hear" subtitle="Everything stays on your Mac until you ask a question.">
-              <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-                {[
-                  { id: 'screen', icon: MonitorUp, title: 'Screen Recording', desc: 'Capture only the region you select.' },
-                  { id: 'mic', icon: Mic, title: 'Microphone', desc: 'Hear your question while the overlay is open.' },
-                  { id: 'access', icon: Keyboard, title: 'Accessibility', desc: 'Listen for the global shortcut.' },
-                ].map((p) => (
-                  <li key={p.id} className="flex items-center gap-4 p-4">
-                    <span className="flex size-9 items-center justify-center rounded-lg bg-secondary">
-                      <p.icon className="size-4" />
-                    </span>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{p.title}</p>
-                      <p className="text-[13px] text-muted-foreground">{p.desc}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setGranted((g) => ({ ...g, [p.id]: true }))}
-                      className={cn(
-                        'flex h-8 items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium transition-colors',
-                        granted[p.id] ? 'bg-brand-soft text-brand-foreground' : 'bg-primary text-primary-foreground hover:bg-primary/90',
-                      )}
-                    >
-                      {granted[p.id] ? (
-                        <>
-                          <Check className="size-3.5" /> Allowed
-                        </>
-                      ) : (
-                        'Allow'
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+            <StepShell title="Let Teachya see and hear" subtitle="Nothing leaves your Mac until you ask a question.">
+              <PermissionsList onChange={setPerms} />
+              {isTauri && perms && !perms.screen && (
+                <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+                  If macOS does not show a prompt, enable Teachya under System Settings → Privacy &amp; Security → Screen &amp; System Audio Recording, then come back.
+                </p>
+              )}
               <div className="mt-5 flex items-center justify-between rounded-xl bg-secondary px-4 py-3">
                 <span className="text-sm">Global shortcut</span>
                 <span className="flex items-center gap-1">
@@ -217,10 +187,10 @@ export function Onboarding() {
               <button
                 type="button"
                 onClick={finish}
-                disabled={!allGranted}
+                disabled={!canFinish}
                 className="flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
               >
-                Start using Lumen <ArrowRight className="size-4" />
+                Start using Teachya <ArrowRight className="size-4" />
               </button>
             )}
           </div>

@@ -1,5 +1,3 @@
-'use client'
-
 import { useState } from 'react'
 import { tr, type Phrase } from '@/lib/content'
 import { useStore } from '@/lib/store'

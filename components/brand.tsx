@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-export function LumenMark({ className }: { className?: string }) {
+export function TeachyaMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={cn('size-4', className)}>
       <path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -12,7 +12,7 @@ export function LumenMark({ className }: { className?: string }) {
   )
 }
 
-export function LumenAppIcon({ className }: { className?: string }) {
+export function TeachyaAppIcon({ className }: { className?: string }) {
   return (
     <div
       className={cn(
@@ -20,7 +20,7 @@ export function LumenAppIcon({ className }: { className?: string }) {
         className,
       )}
     >
-      <LumenMark className="size-[56%]" />
+      <TeachyaMark className="size-[56%]" />
     </div>
   )
 }

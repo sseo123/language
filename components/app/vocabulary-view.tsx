@@ -1,33 +1,36 @@
-'use client'
-
 import { useState } from 'react'
-import { Search, Volume2, X } from 'lucide-react'
-import { langInfo, PHRASE_MAP, tr, UI, type Phrase } from '@/lib/content'
-import { useStore, type VocabEntry } from '@/lib/store'
+import { Search, Trash2, Volume2, X } from 'lucide-react'
+import { langInfo, tr, UI, type LangCode, type Phrase } from '@/lib/content'
+import { formatSaved, isFreshlySaved, useStore, type VocabEntry } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { ContextCard } from './context-card'
 import { MasteryBar, ViewHeader } from './app-window'
 
-const FILTERS = ['All', 'Korean', 'English', 'Needs review'] as const
+type Filter = { id: string; label: string; test: (v: VocabEntry) => boolean }
 
 export function VocabularyView() {
   const { vocab, settings } = useStore()
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>('All')
+  const [filter, setFilter] = useState('all')
   const [selected, setSelected] = useState<string | null>(null)
   const lang = settings.comfortLang
 
-  const items = vocab
-    .map((v) => ({ ...v, phrase: PHRASE_MAP[v.phraseId] }))
-    .filter(({ phrase, mastery }) => {
-      if (filter === 'Korean' && phrase.lang !== 'ko') return false
-      if (filter === 'English' && phrase.lang !== 'en') return false
-      if (filter === 'Needs review' && mastery >= 0.6) return false
-      const q = query.trim().toLowerCase()
-      return !q || phrase.term.toLowerCase().includes(q) || tr(phrase.shortMeaning, lang).toLowerCase().includes(q)
-    })
+  // One tab per language present in the deck, plus a review tab.
+  const langsInDeck = [...new Set(vocab.map((v) => v.phrase.lang))] as LangCode[]
+  const filters: Filter[] = [
+    { id: 'all', label: 'All', test: () => true },
+    ...langsInDeck.map((code) => ({ id: code, label: langInfo(code).english, test: (v: VocabEntry) => v.phrase.lang === code })),
+    { id: 'review', label: 'Needs review', test: (v: VocabEntry) => v.mastery < 0.6 },
+  ]
+  const activeFilter = filters.find((f) => f.id === filter) ?? filters[0]
 
-  const active = selected ? vocab.find((v) => v.phraseId === selected) : null
+  const items = vocab.filter((v) => {
+    if (!activeFilter.test(v)) return false
+    const q = query.trim().toLowerCase()
+    return !q || v.phrase.term.toLowerCase().includes(q) || tr(v.phrase.shortMeaning, lang).toLowerCase().includes(q)
+  })
+
+  const active = selected ? vocab.find((v) => v.phrase.id === selected) : null
 
   return (
     <div className="flex min-h-full">
@@ -50,41 +53,43 @@ export function VocabularyView() {
         />
         <div className="px-8 py-5">
           <div className="mb-5 flex gap-1.5" role="tablist" aria-label="Filter">
-            {FILTERS.map((f) => (
+            {filters.map((f) => (
               <button
-                key={f}
+                key={f.id}
                 type="button"
                 role="tab"
-                aria-selected={filter === f}
-                onClick={() => setFilter(f)}
+                aria-selected={activeFilter.id === f.id}
+                onClick={() => setFilter(f.id)}
                 className={cn(
                   'rounded-full px-3 py-1 text-[13px] font-medium transition-colors',
-                  filter === f ? 'bg-foreground text-background' : 'bg-secondary text-muted-foreground hover:text-foreground',
+                  activeFilter.id === f.id ? 'bg-foreground text-background' : 'bg-secondary text-muted-foreground hover:text-foreground',
                 )}
               >
-                {f}
+                {f.label}
               </button>
             ))}
           </div>
           {items.length === 0 ? (
-            <p className="py-16 text-center text-sm text-muted-foreground">Nothing here yet.</p>
+            <p className="py-16 text-center text-sm text-muted-foreground">
+              {vocab.length === 0 ? 'Nothing saved yet. Capture something on screen and save it to your deck.' : 'Nothing matches.'}
+            </p>
           ) : (
             <ul className="grid grid-cols-2 gap-4 xl:grid-cols-3">
               {items.map((v) => (
-                <li key={v.phraseId}>
+                <li key={v.phrase.id}>
                   <button
                     type="button"
-                    onClick={() => setSelected(v.phraseId)}
+                    onClick={() => setSelected(v.phrase.id)}
                     className={cn(
                       'w-full rounded-xl border bg-card p-3 text-left transition-all hover:shadow-md',
-                      selected === v.phraseId ? 'border-foreground' : 'border-border',
-                      v.savedLabel === 'Just now' && 'ring-2 ring-brand/40',
+                      selected === v.phrase.id ? 'border-foreground' : 'border-border',
+                      isFreshlySaved(v) && 'ring-2 ring-brand/40',
                     )}
                   >
                     <ContextCard phrase={v.phrase} />
                     <div className="mt-3 flex items-baseline justify-between gap-2">
                       <p className="font-semibold">{v.phrase.term}</p>
-                      <span className="text-[11px] text-muted-foreground">{v.savedLabel}</span>
+                      <span className="text-[11px] text-muted-foreground">{formatSaved(v.savedAt)}</span>
                     </div>
                     <p className="truncate text-[13px] text-muted-foreground">{tr(v.phrase.shortMeaning, lang)}</p>
                     <MasteryBar value={v.mastery} className="mt-3" />
@@ -95,18 +100,22 @@ export function VocabularyView() {
           )}
         </div>
       </div>
-      {active && <DetailPane entry={active} phrase={PHRASE_MAP[active.phraseId]} onClose={() => setSelected(null)} />}
+      {active && <DetailPane entry={active} phrase={active.phrase} onClose={() => setSelected(null)} />}
     </div>
   )
 }
 
 function DetailPane({ entry, phrase, onClose }: { entry: VocabEntry; phrase: Phrase; onClose: () => void }) {
-  const { settings } = useStore()
+  const { settings, removeWord } = useStore()
   const lang = settings.comfortLang
   const speak = () => {
     const u = new SpeechSynthesisUtterance(phrase.term)
     u.lang = langInfo(phrase.lang).locale
     window.speechSynthesis?.speak(u)
+  }
+  const remove = () => {
+    removeWord(phrase.id)
+    onClose()
   }
   return (
     <aside className="sticky top-0 h-full max-h-full w-[340px] shrink-0 overflow-y-auto border-l border-border bg-card p-6 animate-in slide-in-from-right-4 fade-in duration-200">
@@ -142,6 +151,13 @@ function DetailPane({ entry, phrase, onClose }: { entry: VocabEntry; phrase: Phr
           {entry.attempts} reviews · {entry.misses} missed
         </p>
       </div>
+      <button
+        type="button"
+        onClick={remove}
+        className="mt-4 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg text-[13px] font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+      >
+        <Trash2 className="size-3.5" /> Remove from deck
+      </button>
     </aside>
   )
 }

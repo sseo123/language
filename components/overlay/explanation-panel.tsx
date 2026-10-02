@@ -1,5 +1,3 @@
-'use client'
-
 import { useEffect, useRef, useState } from 'react'
 import { BookmarkCheck, BookmarkPlus, CornerDownRight, Mic, Sparkles, Volume2, X } from 'lucide-react'
 import { langInfo, tr, UI, type LangCode, type Phrase } from '@/lib/content'
@@ -78,7 +76,7 @@ export function ExplanationPanel({
       <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
         <span className="flex items-center gap-1.5 text-[12px] text-white/55">
           <Sparkles className="size-3.5 text-brand" />
-          Gemma 4 · {lang === 'ko' ? UI.explainedIn.ko : `Explained in ${langInfo(lang).english}`}
+          Teachya · {lang === 'ko' ? tr(UI.explainedIn, 'ko') : `Explained in ${langInfo(lang).english}`}
         </span>
         <div className="flex items-center gap-1.5">
           <Kbd dark>esc</Kbd>
@@ -114,7 +112,7 @@ export function ExplanationPanel({
 
         <div className="mt-3 flex flex-wrap gap-1.5">
           {phrase.tags.map((t) => (
-            <span key={t.en} className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-white/70">
+            <span key={tr(t, lang)} className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-white/70">
               {tr(t, lang)}
             </span>
           ))}

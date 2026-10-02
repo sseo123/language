@@ -1,5 +1,3 @@
-'use client'
-
 import { useState } from 'react'
 import { ArrowLeft, Layers, PenLine, Shuffle, Sparkles } from 'lucide-react'
 import type { Phrase } from '@/lib/content'
@@ -57,6 +55,7 @@ export function PracticeView() {
   }
 
   const focus = weakest(2).map((w) => w.phrase.term)
+  const minWords = (m: Mode) => (m === 'matching' ? 3 : 2)
 
   return (
     <div>
@@ -65,7 +64,13 @@ export function PracticeView() {
         <div className="mb-6 flex items-center gap-3 rounded-xl border border-brand/30 bg-brand-soft px-4 py-3 text-sm">
           <Sparkles className="size-4 shrink-0 text-brand-foreground" />
           <p className="text-brand-foreground">
-            Adaptive mode is on — every round leads with <strong className="font-semibold">{focus.join(' and ')}</strong> until they stick.
+            {vocab.length < 2 ? (
+              <>Save a few words from your screen first. Rounds are built from your own deck.</>
+            ) : (
+              <>
+                Adaptive mode is on — every round leads with <strong className="font-semibold">{focus.join(' and ')}</strong> until they stick.
+              </>
+            )}
           </p>
         </div>
         <ul className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -73,8 +78,10 @@ export function PracticeView() {
             <li key={m.id}>
               <button
                 type="button"
+                disabled={vocab.length < minWords(m.id)}
+                title={vocab.length < minWords(m.id) ? `Needs at least ${minWords(m.id)} saved words` : undefined}
                 onClick={() => start(m.id)}
-                className="group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-card text-left transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                className="group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-card text-left transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:pointer-events-none disabled:opacity-50"
               >
                 <div className={`flex h-32 items-center justify-center bg-gradient-to-b ${m.tint}`}>
                   <m.icon className="size-9 transition-transform group-hover:scale-110" />

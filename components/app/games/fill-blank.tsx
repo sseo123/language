@@ -1,20 +1,26 @@
-'use client'
-
 import { useState } from 'react'
 import { ArrowRight } from 'lucide-react'
-import { PHRASES, tr, type Phrase } from '@/lib/content'
+import { tr, type Phrase } from '@/lib/content'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { RoundComplete, shuffle } from '../practice-view'
 
-function buildOptions(p: Phrase) {
-  const pool = PHRASES.filter((o) => o.id !== p.id && o.lang === p.lang).map((o) => o.cloze.answer)
-  return shuffle([p.cloze.answer, ...shuffle(pool).slice(0, 3)])
+/** Distractors come from the rest of the learner's deck, same language first. */
+function buildOptions(p: Phrase, all: Phrase[]) {
+  const others = all.filter((o) => o.id !== p.id && o.cloze.answer !== p.cloze.answer)
+  const sameLang = others.filter((o) => o.lang === p.lang)
+  const rest = others.filter((o) => o.lang !== p.lang)
+  const pool = [...shuffle(sameLang), ...shuffle(rest)].map((o) => o.cloze.answer)
+  const unique = [...new Set(pool)].slice(0, 3)
+  return shuffle([p.cloze.answer, ...unique])
 }
 
 export function FillBlank({ deck, onRestart }: { deck: Phrase[]; onRestart: () => void }) {
-  const { recordAnswer, settings } = useStore()
-  const [questions] = useState(() => deck.map((p) => ({ phrase: p, options: buildOptions(p) })))
+  const { recordAnswer, settings, vocab } = useStore()
+  const [questions] = useState(() => {
+    const all = vocab.map((v) => v.phrase)
+    return deck.filter((p) => p.cloze.sentence.includes('___')).map((p) => ({ phrase: p, options: buildOptions(p, all) }))
+  })
   const [i, setI] = useState(0)
   const [choice, setChoice] = useState<string | null>(null)
   const [correct, setCorrect] = useState(0)
@@ -45,7 +51,8 @@ export function FillBlank({ deck, onRestart }: { deck: Phrase[]; onRestart: () =
 
       <div className="rounded-2xl border border-border bg-card p-8">
         <p className="text-[12px] font-medium text-muted-foreground">
-          From {phrase.source.app} · {phrase.source.handle}
+          From {phrase.source.app}
+          {phrase.source.handle ? ` · ${phrase.source.handle}` : ''}
         </p>
         <p className="mt-4 text-2xl font-medium leading-relaxed tracking-tight">
           {before}

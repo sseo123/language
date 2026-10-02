@@ -1,5 +1,3 @@
-'use client'
-
 import { useState } from 'react'
 import { Check, RotateCcw } from 'lucide-react'
 import { tr, type Phrase } from '@/lib/content'
