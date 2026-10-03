@@ -9,7 +9,14 @@ __v0_jsx-dev-runtime.ts
 # Environment variables
 .env*.local
 
-# Common ignores
+# Build output and caches
 node_modules
 dist/
+.next/
 .DS_Store
+
+# Rust build output and the compiled Swift sidecar. build.rs bakes the key from
+# .env.local into these, so they must never be committed.
+src-tauri/target/
+src-tauri/binaries/
+src-tauri/gen/schemas/
